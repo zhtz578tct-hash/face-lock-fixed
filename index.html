@@ -1,35 +1,107 @@
-<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Flux Face-Lock</title></head>
-<body style="background:#000;color:#fff;font-family:sans-serif;padding:20px">
+<!doctype html>
+<html>
+<head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flux Face-Lock (InstantID)</title>
+<style>
+body{font-family:system-ui;background:#000;color:#fff;max-width:600px;margin:20px auto;padding:16px}
+input,button{width:100%;padding:14px;margin:8px 0;border-radius:10px;font-size:16px;box-sizing:border-box}
+button{background:#fff;color:#000;font-weight:700;cursor:pointer}
+button.small{width:auto;padding:8px 14px;margin-right:8px;background:#222;color:#fff;border:1px solid #444}
+#status{margin:12px 0;color:#0f0;word-break:break-word}
+img{max-width:100%;border-radius:12px;margin-top:12px;display:none}
+small{color:#aaa}
+.row{display:flex;gap:8px}
+</style>
+</head>
+<body>
 <h2>Flux Face-Lock (InstantID)</h2>
+<small>Crop photo to chest-to-head for perfect face-lock</small>
 <input type="file" id="file" accept="image/*">
-<img id="preview" style="max-width:100%;margin:10px 0;display:none">
-<input id="prompt" style="width:100%;padding:10px;margin:10px 0" value="same person wearing jeans and top, full body, park background, natural lighting, smiling">
-<button id="btn" style="width:100%;padding:15px;background:#fff;color:#000;font-weight:bold">Generate Face-Lock</button>
-<p id="status"></p>
-<img id="result" style="max-width:100%;margin-top:20px">
+<div class="row">
+<input type="text" id="prompt" value="same person wearing full-length blue jeans and blue t-shirt with sleeves, full body, park background, natural light, smiling" style="flex:1">
+<button class="small" id="copyPrompt">Copy</button>
+</div>
+<button id="gen">Generate Face-Lock</button>
+<div id="status"></div>
+<div id="actions" style="display:none">
+<button class="small" id="copyLink">Copy Image Link</button>
+<button class="small" id="download">Download Image</button>
+</div>
+<img id="out">
 <script>
-const fileInput=document.getElementById('file'),preview=document.getElementById('preview'),btn=document.getElementById('btn'),status=document.getElementById('status'),result=document.getElementById('result');
-let base64="";
-fileInput.onchange=async e=>{
-  const f=e.target.files[0]; if(!f) return;
-  const img=await createImageBitmap(f);
-  const canvas=document.createElement('canvas'); const max=640; let w=img.width,h=img.height;
-  if(w>max||h>max){ if(w>h){h*=max/w;w=max;}else{w*=max/h;h=max;} }
-  canvas.width=w; canvas.height=h; canvas.getContext('2d').drawImage(img,0,0,w,h);
-  base64=canvas.toDataURL('image/jpeg',0.8);
-  preview.src=base64; preview.style.display='block';
-};
-btn.onclick=async()=>{
-  if(!base64) return alert('Select image first');
-  status.textContent='Uploading to Replicate... Generating 20s...';
-  btn.disabled=true;
+const fileEl=document.getElementById('file');
+const promptEl=document.getElementById('prompt');
+const genEl=document.getElementById('gen');
+const statusEl=document.getElementById('status');
+const outEl=document.getElementById('out');
+const actionsEl=document.getElementById('actions');
+let lastUrl='';
+async function copyText(text){
   try{
-    const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:base64,prompt:document.getElementById('prompt').value})});
-    const d=await r.json();
-    if(d.error) throw new Error(d.error);
-    const out=d.output; const url=Array.isArray(out)?out[0]:out;
-    result.src=url; status.textContent='Done!';
-  }catch(err){ status.textContent='Error: '+err.message; }
-  btn.disabled=false;
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+    }else{
+      const ta=document.createElement('textarea');
+      ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    }
+    statusEl.textContent='Copied!'; statusEl.style.color='#0f0';
+    setTimeout(()=>{ statusEl.textContent='Done!'; },1500);
+  }catch(e){ statusEl.textContent='Copy failed: '+e.message; statusEl.style.color='#f55'; }
+}
+document.getElementById('copyPrompt').onclick=()=>copyText(promptEl.value);
+document.getElementById('copyLink').onclick=()=>copyText(lastUrl);
+document.getElementById('download').onclick=()=>{
+  if(!lastUrl) return;
+  const a=document.createElement('a'); a.href=lastUrl; a.download='face-lock.jpg'; a.target='_blank'; a.click();
 };
-</script></body></html>
+genEl.onclick=async()=>{
+  const f=fileEl.files[0];
+  if(!f){ statusEl.textContent='Choose image first'; statusEl.style.color='#f55'; return; }
+  statusEl.style.color='#0f0'; statusEl.textContent='Processing image...'; outEl.style.display='none'; actionsEl.style.display='none';
+  try{
+    const bmp=await createImageBitmap(f);
+    const canvas=document.createElement('canvas');
+    const max=1024;
+    let w=bmp.width,h=bmp.height;
+    if(w>max||h>max){ if(w>h){ h=Math.round(h*max/w); w=max; } else { w=Math.round(w*max/h); h=max; } }
+    canvas.width=w; canvas.height=h; canvas.getContext('2d').drawImage(bmp,0,0,w,h);
+    const image=canvas.toDataURL('image/jpeg',0.85);
+    statusEl.textContent='Generating (20-30s)...';
+    const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,prompt:promptEl.value})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||JSON.stringify(d));
+    let url = Array.isArray(d.output)? d.output[0] : d.output;
+    if(!url) throw new Error('No output');
+    lastUrl=url; outEl.src=url; outEl.style.display='block'; actionsEl.style.display='block';
+    statusEl.textContent='Done!'; statusEl.style.color='#0f0';
+  }catch(err){
+    statusEl.textContent='Error: '+err.message; statusEl.style.color='#f55';
+  }
+};
+</script>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
+</html>
