@@ -1,37 +1,24 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({error:'POST only'});
   try {
     const { image, prompt } = req.body;
     const token = process.env.REPLICATE_API_TOKEN;
+    if (!token) return res.status(500).json({error:'No token'});
     
-    const response = await fetch("https://api.replicate.com/v1/models/zsxkib/instant-id/predictions", {
+    const r = await fetch("https://api.replicate.com/v1/models/zsxkib/instant-id/predictions", {
       method: "POST",
       headers: { Authorization: `Token ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        input: {
-          image: image,
-          prompt: prompt,
-          ip_adapter_scale: 0.8,
-          controlnet_conditioning_scale: 0.8
-        }
-      })
+      body: JSON.stringify({ input: { image: image, prompt: prompt, ip_adapter_scale: 0.8 } })
     });
+    let pred = await r.json();
+    if (pred.error) return res.status(500).json({error: pred.error});
     
-    let prediction = await response.json();
-    if (prediction.error) return res.status(500).json({error: prediction.error});
-
-    while (prediction.status !== "succeeded" && prediction.status !== "failed") {
-      await new Promise(r => setTimeout(r, 2500));
-      const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${prediction.id}`, {
-        headers: { Authorization: `Token ${token}` }
-      });
-      prediction = await pollRes.json();
+    while (pred.status !== "succeeded" && pred.status !== "failed") {
+      await new Promise(x=>setTimeout(x,3000));
+      const pr = await fetch(`https://api.replicate.com/v1/predictions/${pred.id}`, { headers: { Authorization: `Token ${token}` } });
+      pred = await pr.json();
     }
-
-    if (prediction.status === "failed") return res.status(500).json({error: prediction.error});
-    return res.status(200).json({ output: prediction.output });
-
-  } catch (e) {
-    return res.status(500).json({error: e.message});
-  }
+    if (pred.status === "failed") return res.status(500).json({error: pred.error});
+    return res.status(200).json({output: pred.output});
+  } catch(e) { return res.status(500).json({error:e.message}); }
 }
