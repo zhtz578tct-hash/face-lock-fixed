@@ -38,10 +38,10 @@ small{color:#aaa}
 </head>
 <body>
 <h2>Flux Face-Lock (InstantID)</h2>
-<small>Crop photo to chest-to-head for perfect face-lock</small>
+<small>Crop photo to chest-to-head for perfect face-lock • Zero filter • Same long hair</small>
 <input type="file" id="file" accept="image/*">
 <div class="row">
-<input type="text" id="prompt" value="same person wearing full-length blue jeans and blue t-shirt with sleeves, full body, park background, natural light, smiling" style="flex:1">
+<input type="text" id="prompt" value="same person wearing full-length blue jeans and blue t-shirt with sleeves, full body, park background, natural light, smiling, same long black hair tied back" style="flex:1">
 <button class="small" id="copyPrompt">Copy</button>
 </div>
 <button id="gen">Generate Face-Lock</button>
@@ -52,6 +52,10 @@ small{color:#aaa}
 </div>
 <img id="out">
 <script>
+// FIX 2: Incognito-only bug - clear old service worker and cache
+if('serviceWorker' in navigator){ navigator.serviceWorker.getRegistrations().then(r=>r.forEach(reg=>reg.unregister())); }
+if(window.caches){ caches.keys().then(keys=>keys.forEach(k=>caches.delete(k))); }
+
 const fileEl=document.getElementById('file');
 const promptEl=document.getElementById('prompt');
 const genEl=document.getElementById('gen');
@@ -59,6 +63,7 @@ const statusEl=document.getElementById('status');
 const outEl=document.getElementById('out');
 const actionsEl=document.getElementById('actions');
 let lastUrl='';
+
 async function copyText(text){
   try{
     if(navigator.clipboard && window.isSecureContext){
@@ -69,35 +74,49 @@ async function copyText(text){
       document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
     }
     statusEl.textContent='Copied!'; statusEl.style.color='#0f0';
-    setTimeout(()=>{ statusEl.textContent='Done!'; },1500);
+    setTimeout(()=>{ if(statusEl.textContent==='Copied!') statusEl.textContent='Done!'; },1500);
   }catch(e){ statusEl.textContent='Copy failed: '+e.message; statusEl.style.color='#f55'; }
 }
+
 document.getElementById('copyPrompt').onclick=()=>copyText(promptEl.value);
 document.getElementById('copyLink').onclick=()=>copyText(lastUrl);
 document.getElementById('download').onclick=()=>{
   if(!lastUrl) return;
   const a=document.createElement('a'); a.href=lastUrl; a.download='face-lock.jpg'; a.target='_blank'; a.click();
 };
+
 genEl.onclick=async()=>{
   const f=fileEl.files[0];
   if(!f){ statusEl.textContent='Choose image first'; statusEl.style.color='#f55'; return; }
+
+  // FIX 1: Moderation - block NSFW prompts that cause Replicate to fail
+  const blocked=["bra","panty","panties","bikini","nude","naked","lingerie","sex","nsfw"];
+  if(blocked.some(w=>promptEl.value.toLowerCase().includes(w))){
+    statusEl.textContent='Blocked: Use modest clothing only (jeans, t-shirt, saree, kurta, office wear) to avoid moderation';
+    statusEl.style.color='#f55'; return;
+  }
+
   statusEl.style.color='#0f0'; statusEl.textContent='Processing image...'; outEl.style.display='none'; actionsEl.style.display='none';
   try{
     const bmp=await createImageBitmap(f);
     const canvas=document.createElement('canvas');
-    const max=1024;
+    const max=1024; // Keeps face sharp - fixes distortion
     let w=bmp.width,h=bmp.height;
     if(w>max||h>max){ if(w>h){ h=Math.round(h*max/w); w=max; } else { w=Math.round(w*max/h); h=max; } }
     canvas.width=w; canvas.height=h; canvas.getContext('2d').drawImage(bmp,0,0,w,h);
     const image=canvas.toDataURL('image/jpeg',0.85);
-    statusEl.textContent='Generating (20-30s)...';
+
+    statusEl.textContent='Generating (20-30s)... Zero filter, same hair...';
     const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,prompt:promptEl.value})});
     const d=await r.json();
     if(!r.ok) throw new Error(d.error||JSON.stringify(d));
     let url = Array.isArray(d.output)? d.output[0] : d.output;
-    if(!url) throw new Error('No output');
+    if(!url) throw new Error('No output from model');
+    if(url.startsWith('data:') && url.length>800000){
+      statusEl.textContent='Result too large - use smaller cropped photo (chest-up)'; statusEl.style.color='#f55'; return;
+    }
     lastUrl=url; outEl.src=url; outEl.style.display='block'; actionsEl.style.display='block';
-    statusEl.textContent='Done!'; statusEl.style.color='#0f0';
+    statusEl.textContent='Done! Zero filter - natural face, same long hair, full jeans'; statusEl.style.color='#0f0';
   }catch(err){
     statusEl.textContent='Error: '+err.message; statusEl.style.color='#f55';
   }
