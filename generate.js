@@ -22,8 +22,8 @@ module.exports = async (req, res) => {
         version: version,
         input: {
           image: image,
-          prompt: prompt,
-          negative_prompt: "shorts, short shorts, hot pants, revealing clothes, bikini, tattoo on thigh, distorted face, deformed face, blurry face, extra eyes, crooked eyes, stretched smile, high heels, stiletto, glitch, corrupted",
+          prompt: prompt + ", same long black hair tied back, same hairstyle, long hair, female, bindi, natural skin texture, zero filter, photorealistic, no beauty filter",
+          negative_prompt: "shorts, short shorts, hot pants, revealing clothes, bikini, tattoo on thigh, distorted face, deformed face, blurry face, extra eyes, crooked eyes, stretched smile, high heels, stiletto, glitch, corrupted, short hair, pixie cut, boy haircut, male, man, beauty filter, makeup filter, smooth skin filter",
           width: 640,
           height: 960,
           num_inference_steps: 40,
