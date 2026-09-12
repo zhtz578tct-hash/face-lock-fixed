@@ -1,185 +1,263 @@
-<!doctype html>
-<html>
-<head><style>
-@font-face {
-  font-family: "Optimistic";
-  font-style: normal;
-  font-weight: 400 600;
-  font-display: swap;
-  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Optimistic Mono";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
-}
-:where(html) {
-  font-family: "Optimistic", system-ui, sans-serif;
-}
-:where(code, pre, kbd, samp) {
-  font-family: "Optimistic Mono", ui-monospace, monospace;
-}
-</style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Zero Filter Verifier + Face-Lock</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image Edit Prompt Card</title>
 <style>
-body{font-family:system-ui;background:#000;color:#fff;max-width:700px;margin:20px auto;padding:16px}
-.tabs{display:flex;gap:8px;margin:12px 0}
-.tab{flex:1;padding:12px;border-radius:10px;border:1px solid #444;background:#111;color:#aaa;text-align:center;cursor:pointer;font-weight:700}
-.tab.active{background:#fff;color:#000}
-input,button,textarea{width:100%;padding:14px;margin:8px 0;border-radius:10px;font-size:16px;box-sizing:border-box}
-button{background:#fff;color:#000;font-weight:700;cursor:pointer}
-button.small{width:auto;padding:8px 14px;margin-right:8px;background:#222;color:#fff;border:1px solid #444}
-.card{background:#111;border:1px solid #333;border-radius:12px;padding:12px;margin:12px 0}
-#status,#status2{margin:12px 0;color:#0f0;word-break:break-word;font-weight:600}
-img{max-width:100%;border-radius:12px;margin-top:12px}
-small{color:#aaa}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.k{color:#aaa;font-size:13px} .v{color:#fff;font-weight:600}
-.badge{display:inline-block;background:#0f0;color:#000;padding:4px 10px;border-radius:20px;font-weight:800;font-size:12px;margin:6px 0}
-.hidden{display:none}
-.row{display:flex;gap:8px}
+  :root{
+    --bg:#0b1220; --panel:#131c2e; --panel2:#1a2438; --line:#2a3752;
+    --ink:#e8eefb; --dim:#93a4c4; --blue:#3b82f6; --blue2:#60a5fa;
+    --good:#34d399; --warn:#fbbf24; --bad:#f87171;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:18px 14px 60px;max-width:820px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 4px;letter-spacing:-.2px}
+  .sub{color:var(--dim);font-size:13px;margin-bottom:18px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+  .chip{background:var(--panel);border:1px solid var(--line);color:var(--ink);
+    padding:8px 13px;border-radius:999px;font-size:13px;cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--blue2);color:#fff}
+  .chip.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:15px;margin-bottom:14px}
+  .lbl{font-size:11px;letter-spacing:1.1px;text-transform:uppercase;color:var(--dim);
+    margin-bottom:7px;font-weight:700}
+  textarea{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+    border-radius:10px;padding:11px;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;
+    resize:vertical}
+  textarea:focus{outline:none;border-color:var(--blue2)}
+  .out{background:#080e1a;border:1px solid var(--blue);border-radius:10px;padding:13px;
+    font:13.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:#dbe7ff;white-space:pre-wrap;
+    word-break:break-word}
+  .row{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:11px}
+  button.go{background:var(--blue);border:0;color:#fff;font-weight:700;font-size:14px;
+    padding:11px 20px;border-radius:10px;cursor:pointer}
+  button.go:active{transform:translateY(1px)}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--dim);
+    padding:10px 15px;border-radius:10px;cursor:pointer;font-size:13px}
+  button.ghost:hover{color:#fff;border-color:var(--blue2)}
+  .stat{font-size:13px;color:var(--good);min-height:20px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  td{padding:7px 0;border-bottom:1px solid var(--line);vertical-align:top}
+  td:first-child{color:var(--dim);width:38%;padding-right:12px}
+  tr:last-child td{border-bottom:0}
+  .note{font-size:13px;color:var(--warn);margin-top:11px;padding-left:11px;
+    border-left:3px solid var(--warn);line-height:1.5}
+  .fix{font-size:13.5px;padding:9px 0;border-bottom:1px solid var(--line);display:flex;gap:11px}
+  .fix:last-child{border-bottom:0}
+  .fix b{color:var(--bad);flex:0 0 42%;font-weight:600}
+  .fix span{color:var(--dim)}
+  .hint{font-size:12.5px;color:var(--dim);margin-top:9px}
+  .formula{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .formula span{font-size:11.5px;background:var(--panel2);border:1px solid var(--line);
+    padding:5px 10px;border-radius:7px;color:var(--dim)}
+  .formula span b{color:var(--blue2);font-weight:700}
 </style>
 </head>
 <body>
-<h2>Zero Filter Studio™</h2>
-<small>Same face, same skin, same long hair — Zero beauty filter</small>
 
-<div class="tabs">
-<div class="tab active" id="tab1">Tab 1: Verify Zero Filter (FREE)</div>
-<div class="tab" id="tab2">Tab 2: Generate with Prompt (Paid)</div>
-</div>
+<h1>Image Edit Prompt Card</h1>
+<div class="sub">Qwen-Image-Edit 2511 · paste the result into the Hugging Face Space's Instruction box</div>
 
-<!-- TAB 1 CONTENT -->
-<div id="panel1">
-<input type="file" id="file1" accept="image/*">
-<button id="verify">Verify Zero Filter</button>
-<div id="status"></div>
-<div class="grid">
-<div class="card"><div class="k">ORIGINAL UPLOAD</div><img id="orig" style="display:none"><div id="origMeta"></div></div>
-<div class="card"><div class="k">VERIFIED OUTPUT (100% pixels)</div><img id="out" style="display:none"><div id="outMeta"></div></div>
-</div>
-<div id="cert" class="card hidden">
-<div class="badge">✓ ZERO FILTER CERTIFIED</div>
-<div id="certText" style="margin:8px 0;line-height:1.5"></div>
-<div style="display:flex;gap:8px;margin-top:10px">
-<button class="small" id="copyCert">Copy Certificate</button>
-<button class="small" id="downloadCert">Download Certificate</button>
-</div>
-</div>
+<div class="formula">
+  <span><b>1</b> Operation</span><span><b>2</b> Target</span>
+  <span><b>3</b> Specification</span><span><b>4</b> Preservation</span>
 </div>
 
-<!-- TAB 2 CONTENT -->
-<div id="panel2" class="hidden">
-<input type="file" id="file2" accept="image/*">
-<div class="row">
-<textarea id="prompt" rows="3" style="flex:1">same person wearing full-length blue jeans and blue t-shirt with sleeves, full body, park background, natural light, smiling, same long black hair tied back, zero filter, photorealistic</textarea>
-<button class="small" id="copyPrompt">Copy</button>
+<div class="chips" id="chips"></div>
+
+<div class="card">
+  <div class="lbl">What should change &nbsp;(1–3)</div>
+  <textarea id="change" rows="4"></textarea>
 </div>
-<button id="gen">Generate Face-Lock</button>
-<div id="status2"></div>
-<div id="actions2" class="hidden">
-<button class="small" id="copyLink">Copy Image Link</button>
-<button class="small" id="download2">Download Image</button>
+
+<div class="card">
+  <div class="lbl">What must stay identical &nbsp;(4 — the part everyone skips)</div>
+  <textarea id="preserve" rows="3"></textarea>
+  <div class="hint">Leave this blank only for a style pass. Blank here is why rooms get rebuilt.</div>
 </div>
-<img id="out2" style="display:none">
-<small>Note: Modest clothing only (jeans, t-shirt, saree, kurta, office). Bra/bikini/lingerie prompts are blocked to avoid Replicate moderation & extra charges.</small>
+
+<div class="card">
+  <div class="lbl">Paste this into the Instruction box</div>
+  <div class="out" id="out">Pick an operation above…</div>
+  <div class="row">
+    <button class="go" id="copy">Copy instruction</button>
+    <button class="ghost" id="clear">Clear</button>
+    <span class="stat" id="stat"></span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="lbl">Settings for this operation</div>
+  <table id="settings"></table>
+  <div class="note" id="note"></div>
+</div>
+
+<div class="card">
+  <div class="lbl">When it goes wrong — read the symptom, not the model</div>
+  <div class="fix"><b>"Edit didn't apply"</b><span>Your prompt was a description, not an instruction. Add an imperative verb: make / change / remove / replace / transform.</span></div>
+  <div class="fix"><b>Whole room replaced</b><span>You named an object that isn't in the photo ("bed"), or you skipped part 4. Anchor to something visible, then state what stays.</span></div>
+  <div class="fix"><b>Face is a different person</b><span>Too aggressive a structural pass. Split it: pose first, beauty second. Add <em>different person, changed face</em> to any negative field.</span></div>
+  <div class="fix"><b>Confetti, sparkles, glitter streaks</b><span>A style LoRA bleeding into a structural edit. Set LoRA to neutral for pass 1; add <em>sparkles, confetti, glitch artifacts</em> to negatives.</span></div>
+  <div class="fix"><b>Hands or chair look melted</b><span>Normal for a hard pose change at 1024px and 4 steps. Seed-hunt 3–4 runs, then Upscaler pass.</span></div>
 </div>
 
 <script>
-// Service worker fix for incognito-only bug
-if('serviceWorker' in navigator){ navigator.serviceWorker.getRegistrations().then(r=>r.forEach(reg=>reg.unregister())); }
-if(window.caches){ caches.keys().then(keys=>keys.forEach(k=>caches.delete(k))); }
-
-// Tabs logic
-const tab1=document.getElementById('tab1'), tab2=document.getElementById('tab2');
-const panel1=document.getElementById('panel1'), panel2=document.getElementById('panel2');
-tab1.onclick=()=>{ tab1.classList.add('active'); tab2.classList.remove('active'); panel1.classList.remove('hidden'); panel2.classList.add('hidden'); }
-tab2.onclick=()=>{ tab2.classList.add('active'); tab1.classList.remove('active'); panel2.classList.remove('hidden'); panel1.classList.add('hidden'); }
-
-const fileEl1=document.getElementById('file1');
-const statusEl=document.getElementById('status');
-const origEl=document.getElementById('orig'), outEl=document.getElementById('out');
-const origMetaEl=document.getElementById('origMeta'), outMetaEl=document.getElementById('outMeta');
-const certEl=document.getElementById('cert'), certTextEl=document.getElementById('certText');
-let lastCertText='';
-function copyText(t){ if(navigator.clipboard){navigator.clipboard.writeText(t);} else{ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); } statusEl.textContent='Copied!'; setTimeout(()=>statusEl.textContent='Zero Filter Verified',1200); }
-document.getElementById('copyCert').onclick=()=>copyText(lastCertText);
-document.getElementById('downloadCert').onclick=()=>{
-  const c=document.createElement('canvas'); c.width=1080; c.height=1350;
-  const ctx=c.getContext('2d'); ctx.fillStyle='#000'; ctx.fillRect(0,0,c.width,c.height);
-  ctx.fillStyle='#0f0'; ctx.font='bold 36px system-ui'; ctx.fillText('ZERO FILTER CERTIFIED',40,80);
-  ctx.fillStyle='#fff'; ctx.font='22px system-ui'; const lines=lastCertText.split('\n'); let y=140; lines.forEach(l=>{ctx.fillText(l,40,y); y+=34;});
-  ctx.fillStyle='#aaa'; ctx.font='18px system-ui'; ctx.fillText('Verified on '+new Date().toLocaleString(),40,c.height-40);
-  const a=document.createElement('a'); a.href=c.toDataURL('image/png'); a.download='zero-filter-certificate.png'; a.click();
-};
-document.getElementById('verify').onclick=async()=>{
-  const f=fileEl1.files[0]; if(!f){ statusEl.textContent='Choose a file first'; statusEl.style.color='#f55'; return; }
-  statusEl.style.color='#0f0'; statusEl.textContent='Verifying...';
-  try{
-    const url=URL.createObjectURL(f); origEl.src=url; origEl.style.display='block';
-    origMetaEl.innerHTML=`<div class="k">File</div><div class="v">${f.name}</div><div class="k">Size</div><div class="v">${(f.size/1024).toFixed(1)} KB</div><div class="k">Type</div><div class="v">${f.type}</div>`;
-    const bmp=await createImageBitmap(f); const canvas=document.createElement('canvas'); canvas.width=bmp.width; canvas.height=bmp.height;
-    const ctx=canvas.getContext('2d'); ctx.imageSmoothingEnabled=false; ctx.drawImage(bmp,0,0);
-    const dataUrl=canvas.toDataURL('image/jpeg',1.0); outEl.src=dataUrl; outEl.style.display='block';
-    outMetaEl.innerHTML=`<div class="k">Resolution</div><div class="v">${bmp.width} x ${bmp.height}</div><div class="k">Pixels</div><div class="v">${(bmp.width*bmp.height).toLocaleString()}</div><div class="k">Filter</div><div class="v">None - Original Pixels</div>`;
-    const cert=`ZERO FILTER VERIFICATION
---------------------------
-File: ${f.name}
-Resolution: ${bmp.width}x${bmp.height}
-Pixels: ${bmp.width*bmp.height}
-Skin Texture: Preserved
-Beauty Filter: NONE
-Hair: Same long hair preserved
-Face Shape: 100% original
-Compression: 1.0 (zero filter)
-Result: PASS - No filter applied`;
-    lastCertText=cert; certTextEl.innerHTML=cert.replace(/\n/g,'<br>'); certEl.classList.remove('hidden');
-    statusEl.textContent='✓ Zero Filter Verified - Same face, same texture, no filter'; statusEl.style.color='#0f0';
-  }catch(e){ statusEl.textContent='Error: '+e.message; statusEl.style.color='#f55'; }
-};
-
-// TAB 2 GENERATION
-const fileEl2=document.getElementById('file2');
-const promptEl=document.getElementById('prompt');
-const genEl=document.getElementById('gen');
-const statusEl2=document.getElementById('status2');
-const outEl2=document.getElementById('out2');
-const actions2=document.getElementById('actions2');
-let lastUrl='';
-async function copyText2(text){
-  try{
-    if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(text); }
-    else{ const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
-    statusEl2.textContent='Copied!'; statusEl2.style.color='#0f0'; setTimeout(()=>{ if(statusEl2.textContent==='Copied!') statusEl2.textContent='Done!'; },1500);
-  }catch(e){ statusEl2.textContent='Copy failed: '+e.message; statusEl2.style.color='#f55'; }
-}
-document.getElementById('copyPrompt').onclick=()=>copyText2(promptEl.value);
-document.getElementById('copyLink').onclick=()=>copyText2(lastUrl);
-document.getElementById('download2').onclick=()=>{ if(!lastUrl) return; const a=document.createElement('a'); a.href=lastUrl; a.download='face-lock.jpg'; a.target='_blank'; a.click(); };
-genEl.onclick=async()=>{
-  const f=fileEl2.files[0]; if(!f){ statusEl2.textContent='Choose image first'; statusEl2.style.color='#f55'; return; }
-  const blocked=["bra","panty","panties","bikini","nude","naked","lingerie","sex","nsfw"];
-  if(blocked.some(w=>promptEl.value.toLowerCase().includes(w))){
-    statusEl2.textContent='Blocked: Use modest clothing only (jeans, t-shirt, saree, kurta, office wear) to avoid moderation'; statusEl2.style.color='#f55'; return;
+var PRESETS = {
+  chair: {
+    label: "Sit on the chair already there",
+    change: "Change her pose from standing to sitting on one of the wooden chairs to her right. Seated naturally, back supported, hands resting in her lap, saree folds draping naturally over her knees.",
+    preserve: "Keep her face, expression, saree colours and pattern, the pink balloons, the stage, the tiled floor and the existing lighting exactly as in the original.",
+    lora: "Most neutral option in the dropdown",
+    steps: "4-STEP FAST is enough for pose",
+    seed: "Randomize ON",
+    runs: "3–4 runs, keep the best",
+    note: "This is the corrected version of \"Make her sit on bed\". The chair exists in your photo, so nothing has to be invented — the hall survives."
+  },
+  bed: {
+    label: "Sit on a bed (new room)",
+    change: "Make her sit on the edge of a bed in a bedroom, seated naturally with her hands in her lap.",
+    preserve: "Keep her face, expression and saree exactly as in the original.",
+    lora: "Neutral for pose, Hyper-Realistic-Portrait as pass 2",
+    steps: "4-STEP FAST, then add the LoRA",
+    seed: "Randomize ON",
+    runs: "3–4 runs",
+    note: "Naming a room the photo doesn't contain hands the model the whole set. Expect the hall to disappear — that is the instruction working, not failing."
+  },
+  angle: {
+    label: "Different camera angle",
+    change: "Rotate the camera 45 degrees to the right.",
+    preserve: "Keep her face, expression, clothing and the room background unchanged.",
+    lora: "Multiple-Angles, or Fal-Multiple-Angles",
+    steps: "4-STEP FAST",
+    seed: "Randomize ON",
+    runs: "2–3 runs",
+    note: "The Multiple-Angles LoRAs are built for exactly this; they hold identity better than a bare rotation prompt."
+  },
+  beauty: {
+    label: "Hyper-real detail pass",
+    change: "Transform into a hyper-realistic face portrait.",
+    preserve: "",
+    lora: "Hyper-Realistic-Portrait",
+    steps: "4-STEP FAST",
+    seed: "Randomize ON",
+    runs: "2–3 runs",
+    note: "This is the Space's own bundled prompt for this LoRA. Run it on an already-winning structural result — it beautifies, it does not re-pose."
+  },
+  upscale: {
+    label: "Upscale / 2K detail",
+    change: "Upscale this image to 2K and restore fine detail in the fabric and skin.",
+    preserve: "Keep the composition, pose and colours identical.",
+    lora: "Upscaler (Upscale2K) or Unblur-Anything",
+    steps: "4-STEP FAST",
+    seed: "Randomize ON",
+    runs: "1–2 runs",
+    note: "Run this last. The base edit renders at a 1024px longest side, so fine saree pattern needs this pass to hold up."
+  },
+  remove: {
+    label: "Remove an object",
+    change: "Remove the [object] from the scene. Fill the empty area with matching [floor / wall / background].",
+    preserve: "Preserve all other elements, lighting direction, shadow patterns and overall composition exactly as in the original.",
+    lora: "Neutral, or Style-Transfer only if you want a look",
+    steps: "4-STEP FAST",
+    seed: "Randomize ON",
+    runs: "2–3 runs",
+    note: "Replace the bracketed words with a real description — \"the speaker on the left\", \"the pink balloon cluster\"."
+  },
+  background: {
+    label: "Change the background",
+    change: "Change the background to [a plain studio wall / a garden at golden hour / etc.].",
+    preserve: "Keep her exactly as she is — same face, expression, pose and saree — and keep the lighting on her consistent with the original.",
+    lora: "Neutral",
+    steps: "4-STEP FAST",
+    seed: "Randomize ON",
+    runs: "2–3 runs",
+    note: "Background swaps are where lighting mismatches show. Naming a light direction keeps her from looking pasted on."
   }
-  statusEl2.style.color='#0f0'; statusEl2.textContent='Processing image...'; outEl2.style.display='none'; actions2.classList.add('hidden');
-  try{
-    const bmp=await createImageBitmap(f); const canvas=document.createElement('canvas'); const max=1024; let w=bmp.width,h=bmp.height;
-    if(w>max||h>max){ if(w>h){ h=Math.round(h*max/w); w=max; } else { w=Math.round(w*max/h); h=max; } }
-    canvas.width=w; canvas.height=h; canvas.getContext('2d').drawImage(bmp,0,0,w,h);
-    const image=canvas.toDataURL('image/jpeg',0.85);
-    statusEl2.textContent='Generating (20-30s)... Zero filter, same hair...';
-    const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image,prompt:promptEl.value})});
-    const d=await r.json(); if(!r.ok) throw new Error(d.error||JSON.stringify(d));
-    let url = Array.isArray(d.output)? d.output[0] : d.output; if(!url) throw new Error('No output from model');
-    lastUrl=url; outEl2.src=url; outEl2.style.display='block'; actions2.classList.remove('hidden');
-    statusEl2.textContent='Done! Zero filter - natural face, same long hair, full outfit'; statusEl2.style.color='#0f0';
-  }catch(err){ statusEl2.textContent='Error: '+err.message; statusEl2.style.color='#f55'; }
 };
+
+var cur = null;
+var chips = document.getElementById('chips');
+var elChange = document.getElementById('change');
+var elPres = document.getElementById('preserve');
+var elOut = document.getElementById('out');
+var elSet = document.getElementById('settings');
+var elNote = document.getElementById('note');
+var elStat = document.getElementById('stat');
+
+Object.keys(PRESETS).forEach(function(k){
+  var b = document.createElement('button');
+  b.className = 'chip';
+  b.textContent = PRESETS[k].label;
+  b.dataset.k = k;
+  b.onclick = function(){ load(k); };
+  chips.appendChild(b);
+});
+
+function load(k){
+  cur = k;
+  var p = PRESETS[k];
+  var all = chips.querySelectorAll('.chip');
+  for (var i=0;i<all.length;i++){
+    all[i].classList.toggle('on', all[i].dataset.k === k);
+  }
+  elChange.value = p.change;
+  elPres.value = p.preserve;
+  elSet.innerHTML =
+    '<tr><td>Style / LoRA</td><td>' + esc(p.lora) + '</td></tr>' +
+    '<tr><td>Steps</td><td>' + esc(p.steps) + '</td></tr>' +
+    '<tr><td>Seed</td><td>' + esc(p.seed) + '</td></tr>' +
+    '<tr><td>Expected runs</td><td>' + esc(p.runs) + '</td></tr>';
+  elNote.textContent = p.note;
+  compose();
+}
+
+function compose(){
+  var c = elChange.value.trim();
+  var p = elPres.value.trim();
+  var text = p ? (c + ' ' + p) : c;
+  elOut.textContent = text || 'Pick an operation above…';
+  elStat.textContent = '';
+}
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function reset(){
+  cur = null;
+  var all = chips.querySelectorAll('.chip');
+  for (var i=0;i<all.length;i++){ all[i].classList.remove('on'); }
+  elChange.value = '';
+  elPres.value = '';
+  elSet.innerHTML = '<tr><td>—</td><td>Choose an operation above</td></tr>';
+  elNote.textContent = '';
+  compose();
+}
+
+elChange.addEventListener('input', compose);
+elPres.addEventListener('input', compose);
+
+document.getElementById('copy').onclick = function(){
+  var t = elOut.textContent;
+  if (!t || t === 'Pick an operation above…'){ elStat.textContent = 'Nothing to copy yet'; return; }
+  try {
+    navigator.clipboard.writeText(t).then(function(){
+      elStat.textContent = 'Copied — paste into the Instruction box';
+    }, function(){
+      elStat.textContent = 'Copy blocked — select the text above manually';
+    });
+  } catch (e) {
+    elStat.textContent = 'Select the text above and copy manually';
+  }
+};
+
+document.getElementById('clear').onclick = reset;
+
+reset();
 </script>
-<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
+</body>
 </html>
